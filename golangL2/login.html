@@ -1,0 +1,74 @@
+<!-- login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        /* Style for the pop-up message */
+        .popup {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px;
+            background-color: #f44336;
+            color: white;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login</h1>
+    <form id="loginForm">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+        <label for="role">Role:</label>
+        <select id="role" name="role">
+            <option value="LibraryAdmin">Admin</option>
+            <option value="reader">Reader</option>
+        </select><br><br>
+        <button type="button" onclick="submitLogin()">Login</button>
+    </form>
+
+    <!-- Pop-up message element -->
+    <div id="popup" class="popup"></div>
+
+    <script>
+        function submitLogin() {
+            var email = document.getElementById("email").value;
+            var role = document.getElementById("role").value;
+
+            fetch('http://localhost:8080/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: email, role: role })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.isAdmin) {
+                    window.location.href = 'admin_home.html'; // Redirect to admin page
+                } else if (data.isReader) {
+                    window.location.href = 'reader_home.html'; // Redirect to reader page
+                } else {
+                    // Show pop-up message for wrong details
+                    document.getElementById("popup").innerHTML = "Incorrect login details";
+                    document.getElementById("popup").style.display = "block";
+                }
+            })
+            .catch(error => {
+                console.error('There was a problem with your fetch operation:', error);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<html>
+  <head>
+    <title>LibraryAdmin</title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.6.3/css/all.css"
+    />
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
+    <script>
+      $(document).ready(function () {
+        $(".click").click(function () {
+          $(".popup_box").css("display", "block");
+        });
+        $(".btn1").click(function () {
+          $(".popup_box").css("display", "none");
+        });
+        $(".btn2").click(function () {
+          $(".popup_box").css("display", "none");
+          //   alert("Please Register Yourself First.");
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="C:\html\foodhome.html"> Pizzeria</a>
+        </div>
+        <ul class="nav navbar-nav">
+          <li class="active"><a href="#">Home</a></li>
+          <li><a href="#">Book</a></li>
+          <li><a href="#">Issue</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a href="register-reader.html">
+              <span class="glyphicon glyphicon-user"></span>
+              Register Reader</a
+            >
+          </li>
+          <li>
+            <a href="admin.html">
+              <span class="glyphicon glyphicon-user"></span>
+              Register Admin</a
+            >
+          </li>
+          <li>
+            <a href="login.html">
+              <span class="glyphicon glyphicon-log-in"></span>
+              Login</a
+            >
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="content">
+      <h1>World's Best Pizza Shop</h1>
+      <hr />
+      <p>
+        Often touted as the “best pizza makers” in Naples, Gino and Toto
+        Sorbillo’s flagship restaurant has been open since 1935. <br />they are
+        known for their wood-fired pizzas made with organic flour and fresh
+        ingredients – we’d recommend trying the iconic Margherita al Filetto.
+      </p>
+      <a href="#" class="click"><button>ORDER NOW</button></a>
+    </div>
+    <img src="https://media.tenor.com/SnP57wUb064AAAAC/vegan-veganz.gif" alt="" />
+    <div class="popup_box">
+      <i class="fas fa-exclamation"></i>
+      <h1>Please Register yourself First!!</h1>
+      <label>Are you sure to proceed?</label>
+      <div class="btns">
+        <a href="#" class="btn1">Cancel</a>
+        <a href="#" class="btn2">OK</a>
+      </div>
+    </div>
+  </body>
+</html>

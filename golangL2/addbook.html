@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Book</title>
+    <!-- <link rel="stylesheet" href="styles.css"> -->
+    <style>
+        /* styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 600px;
+    margin: 50px auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+form {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="email"] {
+    width: calc(100% - 20px);
+    padding: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button[type="submit"] {
+    background-color: #007bff;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+  /* Book details section style */
+  #bookDetails {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #bookDetails h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        #bookDetails p {
+            margin: 5px 0;
+        }
+
+        #bookDetails strong {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add Bookss</h1>
+        <form id="addBookForm">
+            <label for="isbn">ISBN:</label>
+            <input type="text" id="isbn" name="ISBN" required><br><br>
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required><br><br>
+            <label for="authors">Authors:</label>
+            <input type="text" id="authors" name="authors" required><br><br>
+            <label for="publisher">Publisher:</label>
+            <input type="text" id="publisher" name="publisher" required><br><br>
+            <label for="version">Version:</label>
+            <input type="text" id="version" name="version" required><br><br>
+            <label for="totalCopies">Total Copies:</label>
+            <input type="number" id="totalCopies" name="total_copies" required><br><br>
+            <label for="availableCopies">Available Copies:</label>
+            <input type="number" id="availableCopies" name="available_copies" required><br><br>
+            <button type="submit">Add Book</button>
+        </form>
+    </div>
+    <div id="bookDetails" style="display: none;">
+        <h2>Book Details</h2>
+        <p><strong>ISBN:</strong> <span id="bookIsbn"></span></p>
+        <p><strong>Title:</strong> <span id="bookTitle"></span></p>
+        <p><strong>Authors:</strong> <span id="bookAuthors"></span></p>
+        <p><strong>Publisher:</strong> <span id="bookPublisher"></span></p>
+        <p><strong>Version:</strong> <span id="bookVersion"></span></p>
+        <p><strong>Total Copies:</strong> <span id="bookTotalCopies"></span></p>
+    </div>
+
+    <script>
+        const form = document.getElementById("addBookForm");
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            
+            const formData = new FormData(form);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                if (key === 'total_copies' || key === 'available_copies') {
+                    jsonData[key] = parseInt(value); // Parse as integer
+                } else {
+                    jsonData[key] = value;
+                }
+            });
+
+            const response = await fetch("http://localhost:8080/add-book", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(jsonData)
+            });
+
+            if (response.ok) {
+                alert("Book added successfully!");
+                form.reset();
+            } else {
+                const data = await response.json();
+                alert(`Error: ${data.error}`);
+            }
+        });
+        function displayBookDetails(bookData) {
+            const bookDetails = document.getElementById("bookDetails");
+            bookDetails.style.display = "block";
+            document.getElementById("bookIsbn").textContent = bookData.isbn;
+            document.getElementById("bookTitle").textContent = bookData.title;
+            document.getElementById("bookAuthors").textContent = bookData.authors;
+            document.getElementById("bookPublisher").textContent = bookData.publisher;
+            document.getElementById("bookVersion").textContent = bookData.version;
+            document.getElementById("bookTotalCopies").textContent = bookData.total_copies;
+        }
+    </script>
+</body>
+</html>

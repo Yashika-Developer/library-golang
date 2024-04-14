@@ -1,0 +1,56 @@
+<!-- admin-registration.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Registration</title>
+</head>
+<body>
+    <h1>Admin Registration</h1>
+    <form id="adminRegistrationForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br><br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+        <label for="contactNumber">Contact Number:</label>
+        <input type="text" id="contactNumber" name="contact_number" required><br><br>
+        <label for="libraryId">Library ID:</label>
+        <input type="number" id="libraryId" name="lib_id" required><br><br>
+        <button type="button" onclick="submitForm()">Register</button>
+    </form>
+<script src="/js/jquery-3.6.0.min.js"></script>
+<script>
+    function submitForm() {
+        var formData = {
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            contact_number: document.getElementById("contactNumber").value,
+            lib_id: parseInt(document.getElementById("libraryId").value)
+        };
+    
+        fetch('http://localhost:8080/library-admin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(data);
+            // Optionally handle success response here
+        })
+        .catch(error => {
+            console.error('There was a problem with your fetch operation:', error);
+        });
+    }
+    </script>
+    
+</body>
+</html>
