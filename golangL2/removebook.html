@@ -31,7 +31,7 @@
             margin-bottom: 8px;
         }
         
-        input[type="text"] {
+        input[type="text"], input[type="number"] {
             width: calc(100% - 20px);
             padding: 8px;
             margin-bottom: 20px;
@@ -59,8 +59,10 @@
         <h1>Remove Book</h1>
         <form id="removeBookForm">
             <label for="isbn">ISBN:</label>
-            <input type="text" id="isbn" name="isbn" required><br><br>
-            <button type="submit">Remove Book</button>
+            <input type="text" id="isbn" name="isbn" required><br>
+            <label for="copiesToRemove">Copies to Remove:</label>
+            <input type="number" id="copiesToRemove" name="copies_to_remove" required min="1" value="1"><br><br>
+            <button type="submit">Removes Book</button>
         </form>
     </div>
 
@@ -69,13 +71,13 @@
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
             
-            const formData = new FormData(form);
-            const jsonData = {};
-            formData.forEach((value, key) => {jsonData[key] = value});
+            const isbn = document.getElementById("isbn").value;
+            const copiesToRemove = parseInt(document.getElementById("copiesToRemove").value);
 
-            const response = await fetch("http://localhost:8080/remove-book/" + jsonData.isbn, {
+            const response = await fetch("http://localhost:8080/remove-book/" + isbn, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"}
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({copies_to_remove: copiesToRemove})
             });
 
             if (response.ok) {
