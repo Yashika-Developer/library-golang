@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/skip2/go-qrcode"
 )
 
 var db *gorm.DB
@@ -248,62 +249,54 @@ func RemoveBook(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Book removed successfully"})
 }
 
-func ApproveRejectRequest(c *gin.Context) {
-	reqID := c.Param("req_id")
-	action := c.Query("action")
+func HandleIssueRequest(c *gin.Context) {
+	requestID := c.Param("id")
 
-	// Fetch the request from the database
-	var request RequestEvent
-	if err := db.First(&request, reqID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Request not found"})
+	// Fetch the issue request from the database
+	var issueRequest RequestEvent
+	if err := db.First(&issueRequest, requestID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Issue request not found"})
 		return
 	}
 
-	// Determine if the action is to approve or reject
-	switch action {
+	// Parse the request body to get the action (approve or reject)
+	var requestBody struct {
+		Action string `json:"action"`
+	}
+	if err := c.BindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Handle the action
+	switch requestBody.Action {
 	case "approve":
-		// Set the approval date and approver ID
-		request.ApprovalDate = time.Now().Format("2006-01-02")
-		// Assuming the approver ID is the admin's user ID
-		// Get the admin's user ID from the email provided in the request
-		email, _ := c.Get("email")
-		var admin User
-		db.Where("email = ?", email.(string)).First(&admin)
-		request.ApproverID = admin.ID
+		// Update the status of the issue request to "approved"
+		issueRequest.ApprovalDate = time.Now().Format("2006-01-02")
+		issueRequest.ApproverID = 1          // Assuming the admin ID is 1
+		issueRequest.RequestType = "approve" // Update request_type to "approve"
 
-		// Update the request status in the database
-		if err := db.Save(&request).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve request"})
+		// Update the issue request in the database
+		if err := db.Save(&issueRequest).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve issue request"})
 			return
 		}
 
-		// Update the issue registry accordingly
-		issue := IssueRegistry{
-			ISBN:               request.BookID,
-			ReaderID:           request.ReaderID,
-			IssueApproverID:    request.ApproverID,
-			IssueStatus:        "Approved",
-			IssueDate:          time.Now().Format("2006-01-02"),
-			ExpectedReturnDate: time.Now().AddDate(0, 0, 7).Format("2006-01-02"), // Assuming 7 days from today
-		}
-		if err := db.Create(&issue).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update issue registry"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Request approved successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Issue request approved successfully"})
 
 	case "reject":
-		// Set the request status to rejected
-		request.RequestType = "Rejected"
+		// Update the status of the issue request to "rejected"
+		issueRequest.ApprovalDate = time.Now().Format("2006-01-02")
+		issueRequest.ApproverID = 1         // Assuming the admin ID is 1
+		issueRequest.RequestType = "reject" // Update request_type to "reject"
 
-		// Update the request status in the database
-		if err := db.Save(&request).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reject request"})
+		// Update the issue request in the database
+		if err := db.Save(&issueRequest).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reject issue request"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Request rejected successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Issue request rejected successfully"})
 
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid action. Please specify 'approve' or 'reject'"})
@@ -312,23 +305,10 @@ func ApproveRejectRequest(c *gin.Context) {
 
 func ListIssueRequests(c *gin.Context) {
 	var issueRequests []RequestEvent
-
-	// Get the email of the logged-in user from the request header
-	adminEmail, _ := c.Get("email")
-
-	// Fetch the admin from the database
-	var admin User
-	if err := db.Where("email = ?", adminEmail).First(&admin).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch admin"})
-		return
-	}
-
-	// Fetch all pending issue requests in the admin's library
-	if err := db.Where("lib_id = ? AND request_type = ? AND approval_date IS NULL", admin.LibID, "Issue").Find(&issueRequests).Error; err != nil {
+	if err := db.Where("request_type = ?", "issue").Find(&issueRequests).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch issue requests"})
 		return
 	}
-
 	c.JSON(http.StatusOK, issueRequests)
 }
 
@@ -502,7 +482,30 @@ func Login(c *gin.Context) {
 		"isReader": isReader,
 	})
 }
+func GenerateQRCode(c *gin.Context) {
+	isbn := c.Param("isbn")
 
+	// Fetch book details from the database
+	var book BookInventory
+	if err := db.Where("isbn = ?", isbn).First(&book).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
+		return
+	}
+
+	// Generate QR code with book details
+	qrData := "Title: " + book.Title + "\n" + "| " +
+		"Authors: " + book.Authors + "\n" + "| " +
+		"Publisher: " + book.Publisher + "\n" + "| " +
+		"Version: " + book.Version
+	qr, err := qrcode.Encode(qrData, qrcode.Medium, 256)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate QR code"})
+		return
+	}
+
+	// Serve QR code as image
+	c.Data(http.StatusOK, "image/png", qr)
+}
 func main() {
 	db, err := ConnectDb()
 	if err != nil {
@@ -537,6 +540,8 @@ func main() {
 	router.POST("/search-book", SearchBook)
 	router.POST("/raise-issue", RaiseIssueRequest)
 	router.GET("/list-issue-requests", ListIssueRequests)
-	router.POST("/approve-reject-request/:req_id", ApproveRejectRequest)
+	router.PUT("/issue-requests/:id", HandleIssueRequest)
+	router.GET("/generate-qr/:isbn", GenerateQRCode)
+	router.POST("/approve-reject-request/:req_id")
 	router.Run("localhost:8080")
 }
