@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Requests</title>
+</head>
+<body>
+    <h1>Issue Requests</h1>
+    <div id="issueRequests"></div>
+
+    <script>
+        // Fetch issue requests from the backend
+        fetch('http://localhost:8080/issue-requests')
+            .then(response => response.json())
+            .then(issueRequests => {
+                const issueRequestsElement = document.getElementById('issueRequests');
+                issueRequests.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.innerHTML = `
+                        <p>Request ID: ${request.ReqID}</p>
+                        <p>Book ID: ${request.BookID}</p>
+                        <p>Reader ID: ${request.ReaderID}</p>
+                        <p>Request Date: ${request.RequestDate}</p>
+                        <p>Approval Date: ${request.ApprovalDate}</p>
+                        <p>Approver ID: ${request.ApproverID}</p>
+                        <p>Request Type: ${request.RequestType}</p>
+                        <hr>
+                    `;
+                    issueRequestsElement.appendChild(requestElement);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching issue requests:', error);
+            });
+    </script>
+</body>
+</html>

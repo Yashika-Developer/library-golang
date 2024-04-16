@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raise Issue Request</title>
+    <style>
+        /* Add your CSS styles here */
+    </style>
+</head>
+<body>
+    <h1>Raise Issue Request</h1>
+    <form id="raiseIssueForm">
+        <label for="bookID">Book ID:</label>
+        <input type="text" id="bookID" name="bookID"><br><br>
+        <label for="readerID">Reader ID:</label>
+        <input type="text" id="readerID" name="readerID"><br><br>
+        <button type="submit">Raise Issue Request</button>
+    </form>
+
+    <script>
+        document.getElementById("raiseIssueForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            raiseIssueRequest();
+        });
+
+        function raiseIssueRequest() {
+            var bookID = document.getElementById("bookID").value;
+            var readerID = document.getElementById("readerID").value;
+
+            var data = {
+                book_id: bookID,
+                reader_id: readerID
+            };
+
+            fetch('http://localhost:8080/raise-issue-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                // You can add code here to handle the response, such as displaying a success message or redirecting the user
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert("Failed to raise issue request. Please try again later.");
+            });
+        }
+    </script>
+</body>
+</html>

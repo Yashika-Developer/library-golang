@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Books</title>
+    <style>
+        /* Add your CSS styles here */
+    </style>
+</head>
+<body>
+    <h1>Search Books</h1>
+    <form id="searchForm">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title"><br><br>
+        <label for="author">Author:</label>
+        <input type="text" id="author" name="author"><br><br>
+        <label for="publisher">Publisher:</label>
+        <input type="text" id="publisher" name="publisher"><br><br>
+        <button type="submit">Search</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById("searchForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            searchBooks();
+        });
+
+        function searchBooks() {
+            var title = document.getElementById("title").value;
+            var author = document.getElementById("author").value;
+            var publisher = document.getElementById("publisher").value;
+
+            var data = {
+                title: title,
+                author: author,
+                publisher: publisher
+            };
+
+            fetch('http://localhost:8080/search-book', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        function displayResults(data) {
+            var resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = ""; // Clear previous results
+            if (data.error) {
+                resultDiv.textContent = "Error: " + data.error;
+            } else {
+                if (data.length === 0) {
+                    resultDiv.textContent = "No books found.";
+                } else {
+                    var table = document.createElement("table");
+                    var thead = document.createElement("thead");
+                    var tbody = document.createElement("tbody");
+                    var tr = document.createElement("tr");
+                    var th1 = document.createElement("th");
+                    var th2 = document.createElement("th");
+                    var th3 = document.createElement("th");
+                    th1.textContent = "Title";
+                    th2.textContent = "Author";
+                    th3.textContent = "Publisher";
+                    tr.appendChild(th1);
+                    tr.appendChild(th2);
+                    tr.appendChild(th3);
+                    thead.appendChild(tr);
+                    table.appendChild(thead);
+
+                    data.forEach(function(book) {
+                        var tr = document.createElement("tr");
+                        var td1 = document.createElement("td");
+                        var td2 = document.createElement("td");
+                        var td3 = document.createElement("td");
+                        td1.textContent = book.Title;
+                        td2.textContent = book.Authors;
+                        td3.textContent = book.Publisher;
+                        tr.appendChild(td1);
+                        tr.appendChild(td2);
+                        tr.appendChild(td3);
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    resultDiv.appendChild(table);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

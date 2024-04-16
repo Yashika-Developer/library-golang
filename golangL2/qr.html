@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <style>
+        /* CSS styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+        }
+        #qrImg {
+            margin-top: 20px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QR Code Generator</h1>
+        <input type="text" id="isbnInput" placeholder="Enter ISBN">
+        <button id="generateBtn">Generate QR Code</button>
+        <div id="qrResult"></div>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            var isbn = document.getElementById('isbnInput').value;
+
+            // Fetch API to request QR code generation
+            fetch('http://localhost:8080/generate-qr/' + isbn)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Convert the blob data into a URL
+                const qrURL = URL.createObjectURL(blob);
+                
+                // Create an image element to display the QR code
+                const qrImg = document.createElement('img');
+                qrImg.src = qrURL;
+                
+                // Clear previous QR code, if any, and display the new QR code
+                const qrResult = document.getElementById('qrResult');
+                qrResult.innerHTML = '';
+                qrResult.appendChild(qrImg);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('qrResult').innerHTML = `<p>Error: ${error.message}</p>`;
+            });
+        });
+    </script>
+</body>
+</html>
