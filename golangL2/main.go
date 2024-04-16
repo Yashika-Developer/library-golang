@@ -170,7 +170,11 @@ func AddBooks(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	// Check if TotalCopies or AvailableCopies is negative
+	if book.TotalCopies < 0 || book.AvailableCopies < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "TotalCopies and AvailableCopies cannot be negative"})
+		return
+	}
 	// Set LibID to 1
 	book.LibID = 1
 
@@ -197,10 +201,19 @@ func AddBooks(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Book added successfully"})
 }
-
-// RemoveBook decrements the total copies of a book until it reaches 0
 func RemoveBook(c *gin.Context) {
 	isbn := c.Param("isbn")
+
+	// JSON request structure
+	var req struct {
+		CopiesToRemove int `json:"copies_to_remove"`
+	}
+
+	// Bind JSON request
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Check if the book exists
 	var existingBook BookInventory
@@ -209,22 +222,114 @@ func RemoveBook(c *gin.Context) {
 		return
 	}
 
-	// Check if there are any issued copies
-	if existingBook.TotalCopies != existingBook.AvailableCopies {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot remove book with issued copies"})
+	// Prompt the user for the number of copies to remove
+	if req.CopiesToRemove <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid number of copies to remove"})
 		return
 	}
 
-	// Decrement the total copies until 0
-	for existingBook.TotalCopies > 0 {
-		existingBook.TotalCopies--
-		if err := db.Save(&existingBook).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove book"})
-			return
-		}
+	if req.CopiesToRemove > existingBook.TotalCopies {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Requested copies to remove exceed total copies"})
+		return
+	}
+
+	// Update available copies
+	existingBook.AvailableCopies -= req.CopiesToRemove
+
+	// Update total copies
+	existingBook.TotalCopies -= req.CopiesToRemove
+
+	// Save changes to the database
+	if err := db.Save(&existingBook).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove book"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Book removed successfully"})
+}
+
+func ApproveRejectRequest(c *gin.Context) {
+	reqID := c.Param("req_id")
+	action := c.Query("action")
+
+	// Fetch the request from the database
+	var request RequestEvent
+	if err := db.First(&request, reqID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Request not found"})
+		return
+	}
+
+	// Determine if the action is to approve or reject
+	switch action {
+	case "approve":
+		// Set the approval date and approver ID
+		request.ApprovalDate = time.Now().Format("2006-01-02")
+		// Assuming the approver ID is the admin's user ID
+		// Get the admin's user ID from the email provided in the request
+		email, _ := c.Get("email")
+		var admin User
+		db.Where("email = ?", email.(string)).First(&admin)
+		request.ApproverID = admin.ID
+
+		// Update the request status in the database
+		if err := db.Save(&request).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve request"})
+			return
+		}
+
+		// Update the issue registry accordingly
+		issue := IssueRegistry{
+			ISBN:               request.BookID,
+			ReaderID:           request.ReaderID,
+			IssueApproverID:    request.ApproverID,
+			IssueStatus:        "Approved",
+			IssueDate:          time.Now().Format("2006-01-02"),
+			ExpectedReturnDate: time.Now().AddDate(0, 0, 7).Format("2006-01-02"), // Assuming 7 days from today
+		}
+		if err := db.Create(&issue).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update issue registry"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Request approved successfully"})
+
+	case "reject":
+		// Set the request status to rejected
+		request.RequestType = "Rejected"
+
+		// Update the request status in the database
+		if err := db.Save(&request).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reject request"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Request rejected successfully"})
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid action. Please specify 'approve' or 'reject'"})
+	}
+}
+
+func ListIssueRequests(c *gin.Context) {
+	var issueRequests []RequestEvent
+
+	// Get the email of the logged-in user from the request header
+	adminEmail, _ := c.Get("email")
+
+	// Fetch the admin from the database
+	var admin User
+	if err := db.Where("email = ?", adminEmail).First(&admin).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch admin"})
+		return
+	}
+
+	// Fetch all pending issue requests in the admin's library
+	if err := db.Where("lib_id = ? AND request_type = ? AND approval_date IS NULL", admin.LibID, "Issue").Find(&issueRequests).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch issue requests"})
+		return
+	}
+
+	c.JSON(http.StatusOK, issueRequests)
 }
 
 func UpdateBookDetails(c *gin.Context) {
@@ -268,6 +373,16 @@ func RaiseIssueRequest(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
 		return
 	}
+	var reader User
+	if err := db.Where("id = ?", req.ReaderID).First(&reader).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "reader not found"})
+		return
+	}
+	if reader.Role != "reader" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid role for this user"})
+		return
+	}
+
 	if book.AvailableCopies == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Book is not available"})
 		return
@@ -319,10 +434,11 @@ func SearchBook(c *gin.Context) {
 			expectedDueDate := time.Now().AddDate(0, 0, 7).Format("2006-01-02") // Assuming 7 days from today
 			books[i].AvailableCopies = 0
 			books[i].Version = expectedDueDate
-		}
-	}
+			c.JSON(http.StatusOK, gin.H{"book is not avalable and expected due date": expectedDueDate})
 
-	c.JSON(http.StatusOK, books)
+		}
+
+	}
 }
 func RegisterUser(c *gin.Context) {
 	var user User
@@ -420,5 +536,7 @@ func main() {
 	router.POST("/update-book", UpdateBookDetails)
 	router.POST("/search-book", SearchBook)
 	router.POST("/raise-issue", RaiseIssueRequest)
+	router.GET("/list-issue-requests", ListIssueRequests)
+	router.POST("/approve-reject-request/:req_id", ApproveRejectRequest)
 	router.Run("localhost:8080")
 }
