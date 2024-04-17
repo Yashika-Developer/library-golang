@@ -5,98 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Books</title>
     <style>
-        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+        }
+        .books {
+            margin-top: 20px;
+        }
+        .book {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .book h2 {
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
-    <h1>Search Books</h1>
-    <form id="searchForm">
-        <label for="title">Title:</label>
-        <input type="text" id="title" name="title"><br><br>
-        <label for="author">Author:</label>
-        <input type="text" id="author" name="author"><br><br>
-        <label for="publisher">Publisher:</label>
-        <input type="text" id="publisher" name="publisher"><br><br>
-        <button type="submit">Search</button>
-    </form>
-    <div id="result"></div>
+    <div class="container">
+        <h1>Search Books</h1>
+        <form id="searchForm">
+            <div>
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" placeholder="Enter title">
+            </div>
+            <div>
+                <label for="author">Author:</label>
+                <input type="text" id="author" name="author" placeholder="Enter author">
+            </div>
+            <div>
+                <label for="publisher">Publisher:</label>
+                <input type="text" id="publisher" name="publisher" placeholder="Enter publisher">
+            </div>
+            <button type="submit">Search</button>
+        </form>
+        <div id="books" class="books"></div>
+    </div>
 
     <script>
-        document.getElementById("searchForm").addEventListener("submit", function(event) {
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            searchBooks();
-        });
-
-        function searchBooks() {
-            var title = document.getElementById("title").value;
-            var author = document.getElementById("author").value;
-            var publisher = document.getElementById("publisher").value;
-
-            var data = {
-                title: title,
-                author: author,
-                publisher: publisher
-            };
+            
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const publisher = document.getElementById('publisher').value;
 
             fetch('http://localhost:8080/search-book', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({ title: title, author: author, publisher: publisher })
             })
             .then(response => response.json())
             .then(data => {
-                displayResults(data);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        }
-
-        function displayResults(data) {
-            var resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = ""; // Clear previous results
-            if (data.error) {
-                resultDiv.textContent = "Error: " + data.error;
-            } else {
-                if (data.length === 0) {
-                    resultDiv.textContent = "No books found.";
-                } else {
-                    var table = document.createElement("table");
-                    var thead = document.createElement("thead");
-                    var tbody = document.createElement("tbody");
-                    var tr = document.createElement("tr");
-                    var th1 = document.createElement("th");
-                    var th2 = document.createElement("th");
-                    var th3 = document.createElement("th");
-                    th1.textContent = "Title";
-                    th2.textContent = "Author";
-                    th3.textContent = "Publisher";
-                    tr.appendChild(th1);
-                    tr.appendChild(th2);
-                    tr.appendChild(th3);
-                    thead.appendChild(tr);
-                    table.appendChild(thead);
-
-                    data.forEach(function(book) {
-                        var tr = document.createElement("tr");
-                        var td1 = document.createElement("td");
-                        var td2 = document.createElement("td");
-                        var td3 = document.createElement("td");
-                        td1.textContent = book.Title;
-                        td2.textContent = book.Authors;
-                        td3.textContent = book.Publisher;
-                        tr.appendChild(td1);
-                        tr.appendChild(td2);
-                        tr.appendChild(td3);
-                        tbody.appendChild(tr);
+                const booksDiv = document.getElementById('books');
+                if (data.books && data.books.length > 0) {
+                    booksDiv.innerHTML = '';
+                    data.books.forEach(book => {
+                        const bookDiv = document.createElement('div');
+                        bookDiv.classList.add('book');
+                        bookDiv.innerHTML = `<h2>${book.title}</h2><p>Author: ${book.authors}</p><p>Publisher: ${book.publisher}</p><p>Version: ${book.version}</p><p>Total Copies: ${book.total_copies}</p><p>Available Copies: ${book.available_copies}</p>`;
+                        booksDiv.appendChild(bookDiv);
                     });
-                    table.appendChild(tbody);
-                    resultDiv.appendChild(table);
+                } else {
+                    booksDiv.innerHTML = '<p>No books found matching the search criteria</p>';
                 }
-            }
-        }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const booksDiv = document.getElementById('books');
+                booksDiv.innerHTML = '<p>Error searching for books</p>';
+            });
+        });
     </script>
 </body>
 </html>
