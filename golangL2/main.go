@@ -282,6 +282,37 @@ func HandleIssueRequest(c *gin.Context) {
 			return
 		}
 
+		// Decrement available book count by 1
+		var book BookInventory
+		if err := db.Where("ISBN = ?", issueRequest.BookID).First(&book).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find book in inventory"})
+			return
+		}
+		if book.AvailableCopies <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No available copies left"})
+			return
+		}
+		book.AvailableCopies -= 1
+		if err := db.Save(&book).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update book inventory"})
+			return
+		}
+
+		// Create an entry in the issue registry
+		issueRegistry := IssueRegistry{
+			ISBN:               issueRequest.BookID,
+			ReaderID:           issueRequest.ReaderID,
+			IssueApproverID:    1, // Assuming the admin ID is 1
+			IssueStatus:        "issued",
+			IssueDate:          time.Now().Format("2006-01-02"),
+			ExpectedReturnDate: time.Now().AddDate(0, 0, 14).Format("2006-01-02"), // Assuming 14 days from today
+			ReturnDate:         "",                                                // Initialize return date as empty
+			ReturnApproverID:   0,                                                 // Initialize return approver ID as 0
+		}
+		if err := db.Create(&issueRegistry).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create issue registry entry"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "Issue request approved successfully"})
 
 	case "reject":
@@ -395,31 +426,52 @@ func SearchBook(c *gin.Context) {
 		Publisher string `json:"publisher"`
 	}
 
+	// Parse JSON request body
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Prepare the query condition based on provided search criteria
+	var queryCondition string
+	var queryArgs []interface{}
+	if req.Title != "" {
+		queryCondition += "title LIKE ?"
+		queryArgs = append(queryArgs, "%"+req.Title+"%")
+	}
+	if req.Author != "" {
+		if queryCondition != "" {
+			queryCondition += " OR "
+		}
+		queryCondition += "authors LIKE ?"
+		queryArgs = append(queryArgs, "%"+req.Author+"%")
+	}
+	if req.Publisher != "" {
+		if queryCondition != "" {
+			queryCondition += " OR "
+		}
+		queryCondition += "publisher LIKE ?"
+		queryArgs = append(queryArgs, "%"+req.Publisher+"%")
+	}
+
+	// Define and execute the query
 	var books []BookInventory
-	query := db.Where("title LIKE ? OR authors LIKE ? OR publisher LIKE ?", "%"+req.Title+"%", "%"+req.Author+"%", "%"+req.Publisher+"%")
+	query := db.Where(queryCondition, queryArgs...)
 	if err := query.Find(&books).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search for books"})
 		return
 	}
 
-	// Check availability and calculate expected due date
-	for i, book := range books {
-		if book.AvailableCopies == 0 {
-			// Book is not available, calculate expected due date
-			expectedDueDate := time.Now().AddDate(0, 0, 7).Format("2006-01-02") // Assuming 7 days from today
-			books[i].AvailableCopies = 0
-			books[i].Version = expectedDueDate
-			c.JSON(http.StatusOK, gin.H{"book is not avalable and expected due date": expectedDueDate})
-
-		}
-
+	// Check if any books were found
+	if len(books) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No books found matching the search criteria"})
+		return
 	}
+
+	// Prepare response with found books
+	c.JSON(http.StatusOK, gin.H{"books": books})
 }
+
 func RegisterUser(c *gin.Context) {
 	var user User
 	if err := c.BindJSON(&user); err != nil {
