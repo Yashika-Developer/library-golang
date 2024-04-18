@@ -5,45 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raise Issue Request</title>
     <style>
-        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        button {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
-    <h1>Raise Issue Request</h1>
-    <form id="raiseIssueForm">
-        <label for="bookID">Book ID:</label>
-        <input type="text" id="bookID" name="bookID"><br><br>
-        <label for="readerID">Reader ID:</label>
-        <input type="text" id="readerID" name="readerID"><br><br>
-        <button type="submit">Raise Issue Request</button>
-    </form>
+    <div class="container">
+        <h1>Raise Issue Request</h1>
+        <form id="raiseIssueForm">
+            <label for="bookID">Book ID:</label>
+            <input type="text" id="bookID" name="bookID" required>
+
+            <label for="readerID">Reader ID:</label>
+            <input type="number" id="readerID" name="readerID" required>
+
+            <button type="button" onclick="raiseIssueRequest()">Raise Issue Request</button>
+        </form>
+    </div>
 
     <script>
-        document.getElementById("raiseIssueForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            raiseIssueRequest();
-        });
-
         function raiseIssueRequest() {
             var bookID = document.getElementById("bookID").value;
             var readerID = document.getElementById("readerID").value;
 
             var data = {
                 book_id: bookID,
-                reader_id: readerID
+                reader_id: parseInt(readerID) // Convert reader ID to integer
             };
 
-            fetch('http://localhost:8080/raise-issue-request', {
+            fetch('http://localhost:8080/raise-issue', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(data),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 alert(data.message);
-                // You can add code here to handle the response, such as displaying a success message or redirecting the user
             })
             .catch((error) => {
                 console.error('Error:', error);
